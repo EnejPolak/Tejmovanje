@@ -1,0 +1,37 @@
+CREATE TABLE intervali (  
+  id serial PRIMARY KEY,
+  poraba real,
+  tarifa real,
+  datum date,
+  ura time,
+  cena real,
+  dnevni_izracun_cena real,
+  dnevni_izracun_poraba real
+);
+
+
+CREATE OR REPLACE FUNCTION update_izracune_cena_in_poraba() 
+RETURNS trigger AS $$
+BEGIN
+  UPDATE intervali
+  SET
+    dnevni_izracun_cena = (
+      SELECT SUM(cena) 
+      FROM informacije 
+      WHERE datum = NEW.datum
+    ),
+    dnevni_izracun_poraba = (
+      SELECT SUM(poraba)
+      FROM informacije 
+      WHERE datum = NEW.datum
+    )
+  WHERE id = NEW.id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_izracune
+AFTER INSERT ON intervali
+FOR EACH ROW
+EXECUTE FUNCTION update_izracune_cena_in_poraba();
